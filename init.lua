@@ -203,6 +203,7 @@ require('lazy').setup({
   --       Uncomment any of the lines below to enable them.
   -- require 'kickstart.plugins.autoformat',
   -- require 'kickstart.plugins.debug',
+  require 'custom.plugins.filetree'
 
   -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
   --    You can use this folder to prevent any conflicts with this init.lua if you're interested in keeping
@@ -255,6 +256,51 @@ vim.o.completeopt = 'menuone,noselect'
 vim.o.termguicolors = true
 
 -- [[ Basic Keymaps ]]
+
+-- [[ My custom stuff ]]
+
+-- Stay in insert mode
+-- vim.cmd 'autocmd BufEnter * startinsert'
+
+-- Ctrl + s to save
+vim.cmd([[
+function! CustomSave()
+  " Check if buffer has a name
+  if expand('%') == ""
+    " Ask for a filename
+    let l:filename = input('Save as (include path if needed): ')
+    if l:filename != ""
+      " Write the file with the given name
+      execute 'write ' . l:filename
+    endif
+  else
+    write
+  endif
+endfunction
+]])
+vim.api.nvim_set_keymap('i', '<C-s>', '<C-o>:call CustomSave()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<C-s>', ':call CustomSave()<CR>', { noremap = true, silent = true })
+
+-- Ctrl + x to quit
+vim.cmd([[
+function! CustomSaveAndQuit()
+  " Check if the buffer has changes
+  if &modified
+    " Ask the user if they want to save the changes
+    let l:choice = confirm("Buffer has been modified. Do you want to save changes?", "&Yes\n&No\n&Cancel")
+    if l:choice == 1
+      call CustomSave()
+    elseif l:choice == 3
+      return
+    endif
+  endif
+  quit!
+endfunction
+]])
+vim.api.nvim_set_keymap('i', '<C-x>', '<C-o>:call CustomSaveAndQuit()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<C-x>', ':call CustomSaveAndQuit()<CR>', { noremap = true, silent = true })
+
+-- [[ Kickstart Keymaps ]]
 
 -- Keymaps for better default experience
 -- See `:help vim.keymap.set()`
