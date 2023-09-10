@@ -1,42 +1,19 @@
 --[[
+====================================================================
+====================== APAZ-CLI's NVIM CONFIG ======================
+====================================================================
 
-=====================================================================
-==================== READ THIS BEFORE CONTINUING ====================
-=====================================================================
-
-Kickstart.nvim is *not* a distribution.
-
-Kickstart.nvim is a template for your own configuration.
-  The goal is that you can read every line of code, top-to-bottom, understand
-  what your configuration is doing, and modify it to suit your needs.
-
-  Once you've done that, you should start exploring, configuring and tinkering to
-  explore Neovim!
-
-  If you don't know anything about Lua, I recommend taking some time to read through
-  a guide. One possible example:
-  - https://learnxinyminutes.com/docs/lua/
+# TODO:
+  - Fix up and down arrows
+  - Investigate why tab behaves as it does
+  - Search and replace
+  - petertriho/nvim-scrollbar -> dstein64/nvim-scrollview
+  - Cursor jumps back when changing modes
 
 
-  And then you can explore or search through `:help lua-guide`
-  - https://neovim.io/doc/user/lua-guide.html
-
-
-Kickstart Guide:
-
-I have left several `:help X` comments throughout the init.lua
-You should run that command and read that help section for more information.
-
-In addition, I have some `NOTE:` items throughout the file.
-These are for you, the reader to help understand what is happening. Feel free to delete
-them once you know what you're doing, but they should serve as a guide for when you
-are first encountering a few different constructs in your nvim config.
-
-I hope you enjoy your Neovim journey,
-- TJ
-
-P.S. You can delete this when you're done too. It's your config now :)
 --]]
+
+
 -- Set <space> as the leader key
 -- See `:help mapleader`
 --  NOTE: Must happen before plugins are required (otherwise wrong leader will be used)
@@ -49,12 +26,7 @@ vim.g.maplocalleader = ' '
 local lazypath = vim.fn.stdpath 'data' .. '/lazy/lazy.nvim'
 if not vim.loop.fs_stat(lazypath) then
   vim.fn.system {
-    'git',
-    'clone',
-    '--filter=blob:none',
-    'https://github.com/folke/lazy.nvim.git',
-    '--branch=stable', -- latest stable release
-    lazypath,
+    'git', 'clone', '--filter=blob:none', 'https://github.com/folke/lazy.nvim.git', '--branch=stable', lazypath,
   }
 end
 vim.opt.rtp:prepend(lazypath)
@@ -76,6 +48,9 @@ require('lazy').setup({
 
   -- Dev icons
   'ryanoasis/vim-devicons',
+
+  -- Markdown synhi
+  'plasticboy/vim-markdown',
 
   -- NOTE: This is where your plugins related to LSP can be installed.
   --  The configuration is done below. Search for lspconfig to find it below.
@@ -106,14 +81,9 @@ require('lazy').setup({
 
       -- Adds LSP completion capabilities
       'hrsh7th/cmp-nvim-lsp',
-
-      -- Adds a number of user-friendly snippets
-      'rafamadriz/friendly-snippets',
     },
   },
 
-  -- Useful plugin to show you pending keybinds.
-  { 'folke/which-key.nvim', opts = {} },
   {
     -- Adds git related signs to the gutter, as well as utilities for managing changes
     'lewis6991/gitsigns.nvim',
@@ -135,12 +105,8 @@ require('lazy').setup({
   },
 
   {
-    -- Theme inspired by Atom
-    'navarasu/onedark.nvim',
+    "loctvl842/monokai-pro.nvim",
     priority = 1000,
-    config = function()
-      vim.cmd.colorscheme 'onedark'
-    end,
   },
 
   {
@@ -150,9 +116,37 @@ require('lazy').setup({
     opts = {
       options = {
         icons_enabled = false,
-        theme = 'onedark',
-        component_separators = '|',
+        theme = 'monokai-pro',
+        component_separators = '',
         section_separators = '',
+        disabled_filetypes = {
+          'NvimTree'
+        },
+      },
+      sections = {
+        lualine_a = {'mode'},
+        lualine_b = {'branch', 'diff', 'diagnostics'},
+        lualine_c = {'filename'},
+        lualine_x = {'encoding', 'fileformat', 'filetype'},
+        lualine_y = {'os.date("%H:%M", os.time())'},
+        lualine_z = {'progress', 'location'},
+      }
+    },
+  },
+
+  {
+    -- Scrollbar
+    'petertriho/nvim-scrollbar',
+    opts = {
+      hide_if_all_visible = true,
+      throttle_ms = 1000,
+      handle = { color = '#403e41' },
+      marks = {
+        Cursor = {
+          color = '#ffd866',
+          text = '*',
+          gui = 'bold',
+        },
       },
     },
   },
@@ -201,20 +195,33 @@ require('lazy').setup({
     build = ':TSUpdate',
   },
 
-  -- NOTE: Next Step on Your Neovim Journey: Add/Configure additional "plugins" for kickstart
-  --       These are some example plugins that I've included in the kickstart repository.
-  --       Uncomment any of the lines below to enable them.
-  -- require 'kickstart.plugins.autoformat',
-  -- require 'kickstart.plugins.debug',
-  require 'custom.plugins.filetree'
+  {
+    -- Top bars
+    'romgrk/barbar.nvim',
+    dependencies = {
+      'lewis6991/gitsigns.nvim', -- OPTIONAL: for git status
+      'nvim-tree/nvim-web-devicons', -- OPTIONAL: for file icons
+    },
+    init = function() vim.g.barbar_auto_setup = false end,
+    opts = {
+      animation = false,
+      sidebar_filetypes = {
+        ['neo-tree'] = {event = 'BufWipeout'},
+      }
+    },
+    version = '^1.0.0', -- optional: only update when a new 1.x version is released
+  },
 
-  -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
-  --    You can use this folder to prevent any conflicts with this init.lua if you're interested in keeping
-  --    up-to-date with whatever is in the kickstart repo.
-  --    Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
-  --
-  --    For additional information see: https://github.com/folke/lazy.nvim#-structuring-your-plugins
-  -- { import = 'custom.plugins' },
+  {
+    -- File tree
+    "nvim-neo-tree/neo-tree.nvim",
+    version = "*",
+    dependencies = {
+      "nvim-lua/plenary.nvim",
+      "nvim-tree/nvim-web-devicons", -- not strictly required, but recommended
+      "MunifTanjim/nui.nvim",
+  },
+}
 }, {})
 
 -- [[ Setting options ]]
@@ -265,13 +272,46 @@ vim.o.termguicolors = true
 -- Stay in insert mode
 -- vim.cmd 'autocmd BufEnter * startinsert'
 
+-- Block cursor in insert mode
+vim.opt["guicursor"] = ""
+
+-- Allow cursor to move one past the end of the line
+vim.cmd 'set virtualedit=onemore'
+vim.api.nvim_set_keymap('n', '<end>', '$1l', { noremap = true, silent = true })
+
+-- Don't scroll when moving past the end of the file
+-- vim.cmd 'set scrolloff=1000'
+-- vim.o.display = "lastline"
+
+-- Disable folding in markdown
+vim.cmd 'autocmd FileType markdown setlocal nofoldenable'
+
+-- Trigger rerender of status line every 5 seconds for clock
+if _G.Statusline_timer == nil then _G.Statusline_timer = vim.loop.new_timer() else _G.Statusline_timer:stop() end
+_G.Statusline_timer:start(0, 5000, vim.schedule_wrap( function() vim.api.nvim_command('redrawstatus') end))
+
+-- Turn off lualine inside nvim-tree
+vim.cmd [[
+  au BufEnter,BufWinEnter,WinEnter,CmdwinEnter * if bufname('%') == "NvimTree" | set laststatus=0 | else | set laststatus=2 | endif
+]]
+
+-- Highlight trailing whitespace
+-- vim.cmd 'match errorMsg /\s\+$/'
+vim.cmd([[
+highlight TrailingWhitespace guibg=lightgreen guifg=white
+autocmd BufReadPost,BufNewFile,TextChanged,TextChangedI * match TrailingWhitespace /\s\+$/
+autocmd InsertEnter * match TrailingWhitespace /\s\+\%#\@<!$/
+"autocmd InsertLeave * match TrailingWhitespace /\s\+$/
+"autocmd BufWritePre * %s/\s\+$//e
+]])
+
 -- Ctrl + s to save
 vim.cmd([[
 function! CustomSave()
   " Check if buffer has a name
   if expand('%') == ""
     " Ask for a filename
-    let l:filename = input('Save as (include path if needed): ')
+    let l:filename = input('Save as: ')
     if l:filename != ""
       " Write the file with the given name
       execute 'write ' . l:filename
@@ -283,6 +323,7 @@ endfunction
 ]])
 vim.api.nvim_set_keymap('i', '<C-s>', '<C-o>:call CustomSave()<CR>', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<C-s>', ':call CustomSave()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('v', '<C-s>', ':call CustomSave()<CR>', { noremap = true, silent = true })
 
 -- Ctrl + x to quit
 vim.cmd([[
@@ -302,6 +343,107 @@ endfunction
 ]])
 vim.api.nvim_set_keymap('i', '<C-x>', '<C-o>:call CustomSaveAndQuit()<CR>', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<C-x>', ':call CustomSaveAndQuit()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('v', '<C-x>', ':call CustomSaveAndQuit()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('i', '<C-S-x>', '<C-o>:call CustomSaveAndQuit()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<C-S-x>', ':call CustomSaveAndQuit()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('v', '<C-S-x>', ':call CustomSaveAndQuit()<CR>', { noremap = true, silent = true })
+
+-- Ctrl + w to search
+vim.api.nvim_set_keymap('n', '<C-w>', ':lua SearchForString()<CR>', { noremap = true, silent = true })
+
+_G.last_jump_search = ''
+function SearchForString()
+  local search_string = vim.fn.input('Jump to: ')
+  if search_string == '' then search_string = _G.last_jump_search end
+  _G.last_jump_search = search_string
+
+  local ig = vim.o.ignorecase
+  vim.o.ignorecase = true
+  vim.cmd('call search("' .. search_string .. '", "w")')
+  vim.o.ignorecase = ig
+end
+
+-- copy/paste
+vim.api.nvim_set_keymap('n', '<C-C>', '"+y', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('v', '<C-C>', '"+y', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<C-V>', '"+p', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('v', '<C-V>', '"+p', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<C-S-C>', '"+y', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('v', '<C-S-C>', '"+y', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<C-S-V>', '"+p', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('v', '<C-S-V>', '"+p', { noremap = true, silent = true })
+
+-- Jump up/down
+vim.cmd([[
+function! MoveToNextBlock()
+    let l:wrapscan_original = &wrapscan
+    set nowrapscan
+
+    " Escape into whitespace.
+    "silent! execute "normal! /^\\s*$\\|\%^|^$\<CR>"
+
+    "call search('^\s+(^.*\S.*$)+', 'zWe')
+    "call search('^\\s+(^.*\\S.*$)+', 'We')
+    "silent! execute "normal! /^\\s+(^.*\\S.*$)+\<CR>"
+
+    " Move cursor to beginning of line
+    silent! execute "normal! }j^"
+
+    let &wrapscan = l:wrapscan_original
+endfunction
+]])
+
+vim.cmd([[
+function! MoveToPreviousBlock()
+    let l:wrapscan_original = &wrapscan
+    set nowrapscan
+
+    " Escape into whitespace.
+    if !(getline('.') =~ '^\\s*$' || getline('.') == '')
+        silent! execute "normal! ?^\\s*$\\|\%^|^$\<CR>"
+    endif
+
+    " Search for the last line of the previous code block by advancing through the whitespace.
+    silent! execute "normal! ?^.*\\s*$\\|\%^|^$\<CR>"
+
+    " Advance past the rest of the lines.
+    while getline('.') =~ '^\\S*$' || getline('.') == ''
+        silent! execute "normal! k"
+        if getpos(".")[1] == 1
+            break
+        endif
+    endwhile
+
+    " Keep searching until another whitespace line is found (start of block)
+    silent! execute "normal! ?^\\s*$\\|^$\<CR>"
+
+    " If not at the top of the file, go down one line.
+    if getpos(".")[1] != 1
+        silent! execute "normal! j^"
+    endif
+endfunction
+]])
+
+vim.api.nvim_set_keymap('n', '<C-Down>', ':call MoveToNextBlock()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<C-Up>', ':call MoveToPreviousBlock()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('i', '<C-Down>', '<C-o>:call MoveToNextBlock()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('i', '<C-Up>', '<C-o>:call MoveToPreviousBlock()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('v', '<C-Down>', ':call MoveToNextBlock()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('v', '<C-Up>', ':call MoveToPreviousBlock()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<C-S-Down>', ':call MoveToNextBlock()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<C-S-Up>', ':call MoveToPreviousBlock()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('i', '<C-S-Down>', '<C-o>:call MoveToNextBlock()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('i', '<C-S-Up>', '<C-o>:call MoveToPreviousBlock()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('v', '<C-S-Down>', ':call MoveToNextBlock()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('v', '<C-S-Up>', ':call MoveToPreviousBlock()<CR>', { noremap = true, silent = true })
+
+-- Shift plus arrow keys selects text
+vim.api.nvim_set_keymap('n', '<S-Right>', 'v<Right>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<S-Left>', 'v<Left>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<S-Up>', 'v<Up>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<S-Down>', 'v<Down>', { noremap = true, silent = true })
+
+
 
 -- [[ Kickstart Keymaps ]]
 
@@ -363,6 +505,9 @@ vim.keymap.set('n', '<leader>sd', require('telescope.builtin').diagnostics, { de
 require('nvim-treesitter.configs').setup {
   -- Add languages to be installed here that you want installed for treesitter
   ensure_installed = { 'c', 'cpp', 'go', 'lua', 'python', 'rust', 'tsx', 'typescript', 'vimdoc', 'vim' },
+  ignore_install = {},
+  modules = {},
+  sync_install = false,
 
   -- Autoinstall languages that are not installed. Defaults to false (but you can change for yourself!)
   auto_install = false,
@@ -484,10 +629,10 @@ end
 --  If you want to override the default filetypes that your language server will attach to you can
 --  define the property 'filetypes' to the map in question.
 local servers = {
-  -- clangd = {},
+  clangd = {},
   -- gopls = {},
-  -- pyright = {},
-  -- rust_analyzer = {},
+  pyright = {},
+  rust_analyzer = {},
   -- tsserver = {},
   -- html = { filetypes = { 'html', 'twig', 'hbs'} },
 
@@ -499,12 +644,17 @@ local servers = {
   },
 }
 
+-- Set up color scheme
+require('monokai-pro').setup()
+vim.cmd([[colorscheme monokai-pro]])
+
 -- Setup neovim lua configuration
 require('neodev').setup()
 
 -- nvim-cmp supports additional completion capabilities, so broadcast that to servers
 local capabilities = vim.lsp.protocol.make_client_capabilities()
 capabilities = require('cmp_nvim_lsp').default_capabilities(capabilities)
+capabilities.textDocument.publishDiagnostics = {tagSupport = {valueSet = { 2 }, }, }
 
 -- Ensure the servers above are installed
 local mason_lspconfig = require 'mason-lspconfig'
