@@ -52,6 +52,9 @@ require('lazy').setup({
   -- Markdown synhi
   'plasticboy/vim-markdown',
 
+  -- AI Autocompletion
+  'Exafunction/codeium.vim',
+
   -- NOTE: This is where your plugins related to LSP can be installed.
   --  The configuration is done below. Search for lspconfig to find it below.
   {
@@ -156,10 +159,7 @@ require('lazy').setup({
     'lukas-reineke/indent-blankline.nvim',
     -- Enable `lukas-reineke/indent-blankline.nvim`
     -- See `:help indent_blankline.txt`
-    opts = {
-      char = '┊',
-      show_trailing_blankline_indent = false,
-    },
+    main = "ibl",
   },
 
   -- "gc" to comment visual regions/lines
@@ -283,8 +283,8 @@ vim.api.nvim_set_keymap('n', '<end>', '$1l', { noremap = true, silent = true })
 -- vim.cmd 'set scrolloff=1000'
 -- vim.o.display = "lastline"
 
--- Disable folding in markdown
-vim.cmd 'autocmd FileType markdown setlocal nofoldenable'
+-- Disable folding everywhere
+vim.cmd 'set nofoldenable'
 
 -- Trigger rerender of status line every 5 seconds for clock
 if _G.Statusline_timer == nil then _G.Statusline_timer = vim.loop.new_timer() else _G.Statusline_timer:stop() end
@@ -305,6 +305,19 @@ autocmd InsertEnter * match TrailingWhitespace /\s\+\%#\@<!$/
 "autocmd BufWritePre * %s/\s\+$//e
 ]])
 
+
+local keymap_all = function(keybind, cmd)
+  cmd = cmd:sub(1, 1) == ':' and cmd .. '<CR>' or cmd
+  vim.api.nvim_set_keymap('i', keybind, '<C-o>' .. cmd, { noremap = true, silent = true })
+  vim.api.nvim_set_keymap('n', keybind,            cmd, { noremap = true, silent = true })
+  vim.api.nvim_set_keymap('v', keybind,            cmd, { noremap = true, silent = true })
+end
+
+local hotkey_all = function(key, cmd)
+  keymap_all('<C-' .. key .. '>', cmd)
+  keymap_all('<C-S-' .. key .. '>', cmd)
+end
+
 -- Ctrl + s to save
 vim.cmd([[
 function! CustomSave()
@@ -321,9 +334,7 @@ function! CustomSave()
   endif
 endfunction
 ]])
-vim.api.nvim_set_keymap('i', '<C-s>', '<C-o>:call CustomSave()<CR>', { noremap = true, silent = true })
-vim.api.nvim_set_keymap('n', '<C-s>', ':call CustomSave()<CR>', { noremap = true, silent = true })
-vim.api.nvim_set_keymap('v', '<C-s>', ':call CustomSave()<CR>', { noremap = true, silent = true })
+hotkey_all('s', ':call CustomSave()')
 
 -- Ctrl + x to quit
 vim.cmd([[
@@ -341,16 +352,19 @@ function! CustomSaveAndQuit()
   quit!
 endfunction
 ]])
-vim.api.nvim_set_keymap('i', '<C-x>', '<C-o>:call CustomSaveAndQuit()<CR>', { noremap = true, silent = true })
-vim.api.nvim_set_keymap('n', '<C-x>', ':call CustomSaveAndQuit()<CR>', { noremap = true, silent = true })
-vim.api.nvim_set_keymap('v', '<C-x>', ':call CustomSaveAndQuit()<CR>', { noremap = true, silent = true })
-vim.api.nvim_set_keymap('i', '<C-S-x>', '<C-o>:call CustomSaveAndQuit()<CR>', { noremap = true, silent = true })
-vim.api.nvim_set_keymap('n', '<C-S-x>', ':call CustomSaveAndQuit()<CR>', { noremap = true, silent = true })
-vim.api.nvim_set_keymap('v', '<C-S-x>', ':call CustomSaveAndQuit()<CR>', { noremap = true, silent = true })
+hotkey_all('x', ':call CustomSaveAndQuit()')
+
+-- Ctrl + k to cut the current line
+-- Ctrl + u to paste the lines
+hotkey_all('k', '"+dd')
+hotkey_all('u', '"+P')
+
+-- Ctrl + c to copy
+-- Ctrl + v to paste
+hotkey_all('c', '"+y')
+hotkey_all('v', '"+p')
 
 -- Ctrl + w to search
-vim.api.nvim_set_keymap('n', '<C-w>', ':lua SearchForString()<CR>', { noremap = true, silent = true })
-
 _G.last_jump_search = ''
 function SearchForString()
   local search_string = vim.fn.input('Jump to: ')
@@ -362,16 +376,8 @@ function SearchForString()
   vim.cmd('call search("' .. search_string .. '", "w")')
   vim.o.ignorecase = ig
 end
+hotkey_all('w', ':lua SearchForString()')
 
--- copy/paste
-vim.api.nvim_set_keymap('n', '<C-C>', '"+y', { noremap = true, silent = true })
-vim.api.nvim_set_keymap('v', '<C-C>', '"+y', { noremap = true, silent = true })
-vim.api.nvim_set_keymap('n', '<C-V>', '"+p', { noremap = true, silent = true })
-vim.api.nvim_set_keymap('v', '<C-V>', '"+p', { noremap = true, silent = true })
-vim.api.nvim_set_keymap('n', '<C-S-C>', '"+y', { noremap = true, silent = true })
-vim.api.nvim_set_keymap('v', '<C-S-C>', '"+y', { noremap = true, silent = true })
-vim.api.nvim_set_keymap('n', '<C-S-V>', '"+p', { noremap = true, silent = true })
-vim.api.nvim_set_keymap('v', '<C-S-V>', '"+p', { noremap = true, silent = true })
 
 -- Jump up/down
 vim.cmd([[
@@ -443,6 +449,34 @@ vim.api.nvim_set_keymap('n', '<S-Left>', 'v<Left>', { noremap = true, silent = t
 vim.api.nvim_set_keymap('n', '<S-Up>', 'v<Up>', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<S-Down>', 'v<Down>', { noremap = true, silent = true })
 
+
+-- Configure indent-blankline
+
+local highlight = {
+    "RainbowRed",
+    "RainbowYellow",
+    "RainbowBlue",
+    "RainbowOrange",
+    "RainbowGreen",
+    "RainbowViolet",
+    "RainbowCyan",
+}
+
+local iblhooks = require "ibl.hooks"
+iblhooks.register(iblhooks.type.HIGHLIGHT_SETUP, function()
+    vim.api.nvim_set_hl(0, "RainbowRed", { fg = "#E06C75" })
+    vim.api.nvim_set_hl(0, "RainbowYellow", { fg = "#E5C07B" })
+    vim.api.nvim_set_hl(0, "RainbowBlue", { fg = "#61AFEF" })
+    vim.api.nvim_set_hl(0, "RainbowOrange", { fg = "#D19A66" })
+    vim.api.nvim_set_hl(0, "RainbowGreen", { fg = "#98C379" })
+    vim.api.nvim_set_hl(0, "RainbowViolet", { fg = "#C678DD" })
+    vim.api.nvim_set_hl(0, "RainbowCyan", { fg = "#56B6C2" })
+end)
+
+require("ibl").setup {
+  indent = { highlight = highlight, char = "" },
+  scope = { enabled = false },
+}
 
 
 -- [[ Kickstart Keymaps ]]
